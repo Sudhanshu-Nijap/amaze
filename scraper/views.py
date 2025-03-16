@@ -470,6 +470,7 @@ def result(request):
 
         if product:
             product_data = {
+                'asin': product.asin,
                 "title": product.title,
                 "image_url": product.image_url,
                 "current_price": product.current_price or 0,  # Ensure no None value
