@@ -1,0 +1,149 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+}
+
+
+.sub-text {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 1.2rem;
+}
+
+.text-orange {
+    color: #FF6200;
+}
+
+/* Custom Button Styling */
+.btn-orange {
+    background-color: #FF6200;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.user{
+    padding: 10px 20px;
+}
+
+.front {
+    min-height: auto; /* Remove forced full height */
+}
+
+/* Adjust for small screens */
+@media (max-width: 768px) {
+    .front {
+        min-height: auto;
+    }
+}
+
+/* Hero Section */
+.hero-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+}
+
+.hero-text {
+    font-size: clamp(1.8rem, 5vw, 3rem);
+    font-weight: bold;
+}
+
+.hero-subtext {
+    font-size: clamp(1rem, 3vw, 1.5rem);
+    max-width: 600px;
+    margin-top: 10px;
+}
+
+.hero-image {
+    width: 90%;
+    max-width: 1200px;
+    height: auto;
+}
+
+/* Navbar */
+.navbar {
+    padding: 0.6rem 1rem; /* Reduced padding for better spacing */
+}
+
+
+.navbar-nav {
+    text-align: center;
+    width: 100%;
+}
+
+
+
+/* Title Logo Text */
+.title {
+    font-size: 1.9rem;
+    font-weight: bold;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 992px) {
+    .hero-text {
+        font-size: clamp(1.6rem, 4vw, 2.5rem);
+        
+    }
+  
+    .hero-subtext {
+        font-size: clamp(1rem, 3vw, 1.4rem);
+    }
+
+    .col-12.col-md-4 {
+        order: unset;
+    }
+    
+    .col-12.col-md-8 {
+        order: unset;
+    }
+    
+
+    .hero-image {
+        width: 100%;
+        max-width: 100%;
+    }
+    
+}
+
+/* Line Separator */
+.line {
+    flex: 1;
+    height: 1px;
+    background-color: #CACACA;
+}
+
+
+
+/* .product-card {
+    width: 18rem;
+    height: 24.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+} 
+.product-card img {
+    max-height: 10rem;
+    object-fit: contain;
+    width: 100%;
+}
+
+.product-card {
+    border: 1px solid #6c757d !important;
+    border-radius: 5px;
+    background: white;
+}  */
+

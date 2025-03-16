@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-3">
+    <h4 class="text-start fw-bold mb-3 best-text">Amazon Todays Deals</h4>
+    <p class="mb-4">
+        Explore the hottest products everyone is buying on Amazon! These top-rated picks are updated frequently,
+        so check back often to stay ahead of the trends.
+    </p>
+
+    <div class="container-fluid today-section">
+        <div class="row row-cols-1 row-cols-md-5 gx-3" id="product-list">
+            {% for product in product_deal %}
+            <div class="col d-flex mb-3 product_deals-item">
+                <div class="card border border-secondary h-100 w-100">
+                    <a href="{% url 'result' %}?url={{ product.product_url|urlencode }}">
+                        <img src="{{ product.image_url }}" class="card-img-top p-2 mt-3" alt="{{ product.title }}"
+                            style="height: auto; max-height: 10rem; object-fit: contain; width: 100%;">
+                    </a>
+                    <div class="card-body d-flex flex-column">
+                        <a href="{% url 'result' %}?url={{ product.product_url|urlencode }}" style="text-decoration: none !important; color: black !important;">
+                            <p class="card-title title-clamp px-2">
+                                {{ product.title }}
+                            </p>
+                            
+                        </a>
+                        <p class="fw-bold text-center my-2 mt-auto">&#8377;{{ product.current_price }}</p>
+                        <a href="{{ product.product_url }}" target="_blank" class="btn btn-warning mt-auto">View at Amazon</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+   
+    
+</div>
+
+{% endblock %}

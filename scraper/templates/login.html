@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container d-flex align-items-center justify-content-center min-vh-100">
+    <div class="row w-100">
+        <!-- Left: Image Section -->
+        <div class="col-md-6 d-none d-md-flex justify-content-end align-items-end">
+            <img src="{% static 'img/camel.png' %}" alt="Camel Mascot" 
+                 class="img-fluid" style="max-height: 50vh;">
+        </div>
+
+        <!-- Right: Login Form -->
+        <div class="col-md-6 d-flex align-items-center justify-content-center">
+            <div class="form-container">
+                <h3 class="fw-bold mb-5">Sign in to Your <span class="title fw-bold">amaze</span> Account</h3>
+                
+                <form method="POST">
+                    {% csrf_token %}
+                    
+                    <!-- Email Field -->
+                    <div class="mb-3">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-control border border-secondary rounded-pill" 
+                               placeholder="Enter your email" name="email" required />
+                    </div>
+
+                    <!-- Password Field -->
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control border border-secondary rounded-pill" 
+                               placeholder="Enter your password" name="password" required />
+                    </div>
+                    
+                    <!-- Login Button -->
+                    <button class="btn btn-primary w-100 rounded-pill fw-bold">Sign In</button>
+                    
+                    <p class="fw-bold mt-4 text-center mb-4">Or log in using</p>
+
+                    <!-- Google Login -->
+                    <a href="{% url 'google_login' %}" 
+                       class="btn w-100 rounded-pill border border-secondary d-flex align-items-center justify-content-center py-2">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+                             alt="Google Logo" width="20" class="me-2"> Google
+                    </a>
+
+                    <!-- Sign Up Link -->
+                    <p class="text-center mt-2">
+                        Don't have an account? 
+                        <a href="{% url 'register_view' %}" class="text-primary text-decoration-none">
+                            Create a Free Account
+                        </a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

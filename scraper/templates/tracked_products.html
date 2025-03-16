@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <h3 class="fw-bold best-text text-start mb-3">Your Recent Alerts</h3>
+    {% if tracked_products %}
+    <p class="mb-4">You have {{ tracked_products|length }} price drop alert{% if tracked_products|length > 1 %}s{% endif %}!</p>
+    {% endif %}
+
+
+    {% if tracked_products %}
+    
+        <div class="row row-cols-1 row-cols-md-3 g-4">
+            {% for tracked in tracked_products %}
+                <div class="col">
+                    <div class="card border border-secondary h-100">
+                        <a href="{% url 'result' %}?url={{ tracked.product.amazon_url|urlencode }}">
+                        <img src="{{ tracked.product.image_url }}" 
+                             alt="{{ tracked.product.title }}" 
+                             class="card-img-top" 
+                             style="height: 200px; object-fit: contain;">
+                            </a>
+
+                        <div class="card-body d-flex flex-column justify-content-between">
+                            <a href="{% url 'result' %}?url={{ tracked.product.amazon_url|urlencode }}" style="text-decoration: none !important; color: black !important;">
+                                <h5 class="card-title title-clamp px-2">
+                                    {{ tracked.product.title }}
+                                </h5>
+                                
+                            </a>
+                            <!-- Centered pricing details -->
+                            <div class="text-center mt-1">
+                                <p class="text-primary font-weight-bold" style="font-size: 1.2rem; font-weight: bolder">Current Price: ₹{{ tracked.product.current_price }}</p>
+                                <p class="text-success font-weight-bold" style="font-size: 1rem; font-weight: bolder;">Target Price: ₹{{ tracked.target_price }}</p>
+                            </div>
+
+                            <!-- View on Amazon Button -->
+                            <a href="{{ tracked.product.amazon_url }}" target="_blank" class="btn btn-warning mt-auto w-100 mb-3">
+                                View on Amazon
+                            </a>
+
+                            
+
+                            <!-- Remove from Price Watch Button -->
+                            <button class="btn btn-danger remove-price-watch"
+                                data-asin="{{ tracked.product.asin }}"
+                                data-title="{{ tracked.product.title }}">
+                                Remove from Price Watch
+                            </button>
+
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+    {% else %}
+        <div class="alert alert-info text-center">
+            You haven't added any products to your watchlist yet.
+        </div>
+    {% endif %}
+</div>
+<script src="{% static 'js/remove_products.js' %}"></script>
+{% endblock %}

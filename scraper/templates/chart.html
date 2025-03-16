@@ -1,0 +1,96 @@
+<!-- {% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    {% if error_message %}
+    <div class="alert alert-danger text-center">
+        <strong>Error:</strong> {{ error_message }}
+    </div>
+    {% else %}
+    <h3 class="fw-bold text-center mb-4">{{ product.title }}</h3>
+
+    <div class="row d-flex align-items-start">
+        
+        <div class="col-md-6 text-center">
+            <img src="{{ product.image_url }}" alt="Product Image" class="img-fluid rounded w-100"
+                style="max-height: 350px; object-fit: contain;">
+        </div>
+
+        <div class="col-md-6 d-flex justify-content-center">
+            <div class="border rounded p-3 shadow-sm bg-light text-center" style="width: 90%; max-width: 350px;">
+                <h3 id="product-price" class="fw-bold text-success product-price">&#8377;{{ product.current_price }}</h3>
+                <p class="text-muted">Amazon Price</p>
+
+                <p class="fw-semibold">
+                    ⭐ {{ product.rating }}
+                </p>
+                
+                
+                <p class="fw-bold {% if product.in_stock %}text-success{% else %}text-danger{% endif %}">
+                    {% if product.in_stock %} In Stock {% else %} Out of Stock {% endif %}
+                </p>
+
+                <a href="{{ product.url }}" target="_blank" class="btn btn-warning fw-bold w-100 rounded-pill">View at Amazon</a>
+
+                <div class="mt-4 p-3 border rounded bg-white">
+                    <h6 class="fw-bold mb-2">Amazon Price Watch</h6>
+                    <p class="text-muted">We'll notify you when the price drops.</p>
+
+                    <label>Desired Price</label>
+                    <input type="text" id="desired-price" class="form-control mb-2 mt-1 rounded-pill" placeholder="₹">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-outline-secondary rounded-pill px-3">-3%</button>
+                        <button class="btn btn-outline-secondary rounded-pill px-3">-5%</button>
+                        <button class="btn btn-outline-secondary rounded-pill px-3">-7%</button>
+                        <button class="btn btn-outline-secondary rounded-pill px-3">-10%</button>
+                        <button class="btn btn-outline-secondary rounded-pill px-3">Any Price Drop!</button>
+                    </div>
+
+                    <p class="mt-3 text-muted">Price drop alerts will be sent to <strong>{{user.email}}</strong></p>
+
+                    <button id="add-price-watch"
+                    data-asin="{{ product.asin }}"
+                    data-title="{{ product.title }}"
+                    data-imageUrl="{{ product.image_url }}"
+                    data-url="{{ product.url }}"
+                    data-rating="{{ product.rating }}"
+                    data-stock-status="{% if product.in_stock %}In Stock{% else %}Out of Stock{% endif %}"
+                    class="btn btn-primary">
+                    +Add Price Watch
+                </button>
+                </div>
+
+            </div>
+        </div>
+
+        {% if not product_from_db %}
+        <div class="row mt-5">
+            <div class="col-md-12">
+                <h4 class="fw-bold">Product Details</h4>
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <tbody>
+                            {% for key, value in product.product_info.items %}
+                            <tr>
+                                <th class="bg-light text-dark">{{ key }}</th>
+                                <td class="text-muted">{{ value }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% endif %}
+  
+    </div>
+    <script id="product-price-data" type="application/json">
+        {{ product.current_price|default:0 }}
+    </script>
+
+    <script src="{% static 'js/price_op.js' %}"></script>
+    <script src="{% static 'js/result.js' %}"></script>
+{% endblock %} -->
