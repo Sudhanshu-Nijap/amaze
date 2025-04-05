@@ -5,7 +5,7 @@ from supabase import create_client
 import re
 from django.db import models
 
-from .models import CustomUser  # Import your CustomUser model
+from scraper.models import CustomUser  # Import your CustomUser model
 
 
 from .bestseller import scrape_amazon_bestsellers
@@ -64,11 +64,11 @@ def home(request):
     today_deals = TodayDeals.objects.order_by("-id")[:8]
 
     return render(request, "frontpage.html", {
+        "title": "amaze",
         "user": user,
         "products": bestsellers,  # Bestseller products from DB
         "products_deal": today_deals,  # Today's deals (scraped)
     })
-
 
 
 def register_view(request):
@@ -115,13 +115,15 @@ def login_view(request):
         password = request.POST.get("password")
 
         try:
-            response = supabase.auth.sign_in_with_password({"email": email, "password": password})
+            response = supabase.auth.sign_in_with_password({"email": email, "password": password})  
 
             if response and response.session:
                 token = response.session.access_token  # Get token
+                print(token)
                 
                 # Store token in HTTP-only cookie
-                response_obj = redirect("home")  # Redirect after login
+                # response_obj = redirect("home")  # Redirect after login 
+                response_obj = redirect("tracked_products")
                 response_obj.set_cookie("supabase_token", token, httponly=True)
                 return response_obj
 
@@ -178,7 +180,7 @@ def google_callback(request):
 
 def logout_view(request):
     """Logs out user by clearing the Supabase token cookie"""
-    response = redirect("login_view")
+    response = redirect("home")
     response.delete_cookie("supabase_token")  # Remove token from cookies
     return response
 
@@ -213,35 +215,9 @@ def amazon_product_view(request):
 
     return render(request, "result.html", {"error_message": "Invalid request","user": user})
 
-# @login_required_supabase
-# def bestsellers_view(request):
-#     """View to display Amazon Bestsellers with AJAX pagination."""
-#     user = get_current_user(request)
-#     start = int(request.GET.get("start", 0))  # Start index
-#     count = 20  # Number of products per page
-    
-#     products = scrape_amazon_bestsellers(start=start, count=count)
-
-#     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':  # AJAX Request
-#         return JsonResponse({"products": products, "start": start, "count": count})
-    
-#     return render(request, "bestseller.html", {
-#         "user": user,
-#         "products": products,
-#         "start": start,
-#         "count": count,
-#     })
-
-
-
-
-
-
 from django.shortcuts import render
 from django.http import JsonResponse
 from .models import Bestseller
-# from scraper.auth_utils import get_current_user
-# from scraper.utils import scrape_amazon_bestsellers  # Import your scraper function
 
 from django.db.models import Count
 
@@ -287,44 +263,6 @@ def bestsellers_view(request):
         "count": count,
     })
 
-
-
-
-def load_more_products(request):
-    try:
-        start = int(request.GET.get("start", 0))  # Get start index for pagination
-        count = 8  # Number of products to fetch each time
-        
-        # Fetch products based on the start and count
-        products = scrape_amazon_bestsellers(start=start, count=count)
-        
-        # Return products in JSON response
-        return JsonResponse({"products": products})
-    
-    except ValueError:
-        return JsonResponse({"error": "Invalid start parameter"}, status=400) 
-
-
-
-
-# @login_required_supabase
-# def today_view(request):
-#     """View to display Amazon Bestsellers with AJAX pagination."""
-#     user = get_current_user(request)
-#     start = int(request.GET.get("start", 0))  # Start index
-#     count = 20  # Number of products per page
-    
-#     product_deal = scrape_amazon_today_offers(start=start, count=count)
-
-#     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':  # AJAX Request
-#         return JsonResponse({"product_deal": product_deal, "start": start, "count": count})
-    
-#     return render(request, "today.html", {
-#         "user": user,
-#         "product_deal": product_deal,
-#         "start": start,
-#         "count": count,
-#     })
 
 
 from django.shortcuts import render
@@ -377,84 +315,10 @@ def today_view(request):
     })
 
 
-def load_deal_products(request):
-    try:
-        start = int(request.GET.get("start", 0))  # Get start index for pagination
-        count = 8  # Number of products to fetch each time
-        
-        # Fetch products based on the start and count
-        products = scrape_amazon_today_offers(start=start, count=count)
-        
-        # Return products in JSON response
-        return JsonResponse({"products": products})
-    
-    except ValueError:
-        return JsonResponse({"error": "Invalid start parameter"}, status=400) 
-
-# very old
-# def result(request):
-#     """Fetch product details from the clicked URL and display them."""
-#     user = get_current_user(request)
-#     url = request.GET.get("url")  # Get URL from the clicked product
-
-#     if not url:
-#         return render(request, "result.html", {"error_message": "Invalid request. No product URL provided.","user": user})
-
-#     try:
-#         product_data = amazon_scraper(url)  # Scrape product details
-
-#         if "error" in product_data:
-#             return render(request, "result.html", {"error_message": product_data["error"],"user": user})
-
-#         return render(request, "result.html", {"product": product_data,"user": user})
-
-#     except Exception as e:
-#         return render(request, "result.html", {"error_message": f"An error occurred: {e}","user": user})
-    
-
-
-
-
-
-
-
-
-
-# old 
-# def result(request):
-#     """Fetch product details from DB if available; otherwise, scrape them."""
-#     user = get_current_user(request)
-#     url = request.GET.get("url")
-
-#     if not url:
-#         return render(request, "result.html", {"error_message": "Invalid request. No product URL provided.", "user": user})
-
-#     try:
-#         product = Product.objects.filter(amazon_url=url).first()
-#         product_from_db = bool(product)  # Flag to indicate if product is from DB
-
-#         if product:
-#             product_data = {
-#                 "title": product.title,
-#                 "image_url": product.image_url,
-#                 "current_price": product.current_price,
-#                 "rating": product.rating,
-#                 "stock_status": product.stock_status,
-#                 "amazon_url": product.amazon_url,
-#             }
-#         else:
-#             product_data = amazon_scraper(url)
-#             if "error" in product_data:
-#                 return render(request, "result.html", {"error_message": product_data["error"], "user": user})
-
-#         return render(request, "result.html", {"product": product_data, "product_from_db": product_from_db, "user": user})
-
-#     except Exception as e:
-#         return render(request, "result.html", {"error_message": f"An error occurred: {e}", "user": user})
-
 from django.shortcuts import render
 import json
 
+@login_required_supabase
 def result(request):
     """Fetch product details from DB if available; otherwise, scrape them."""
     user = get_current_user(request)
@@ -503,28 +367,6 @@ def result(request):
 
     except Exception as e:
         return render(request, "result.html", {"error_message": f"An error occurred: {e}", "user": user})
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 from django.core.exceptions import ObjectDoesNotExist
@@ -623,7 +465,7 @@ def track_products_db(request):
                     tracked_product.save()
 
             # **Save Price History**
-            PriceHistory.objects.create(user=user, product=product, price=current_price)
+            PriceHistory.objects.create(user=user, product=product, price=desired_price)
 
             return JsonResponse({"success": True})
 
@@ -670,3 +512,81 @@ def remove_product_db(request, asin):
         return JsonResponse({"error": f"❌ Failed to delete product. {str(e)}"}, status=500)
 
 
+
+import json
+import logging
+from django_celery_beat.models import PeriodicTask, CrontabSchedule
+from django.http import JsonResponse
+
+logger = logging.getLogger(__name__)
+
+def schedule_mail(request):
+    """Schedule `notify_price_drop` task to run every 4 minutes."""
+    
+    # Create a crontab schedule (Runs every 4 minutes)
+    schedule, created = CrontabSchedule.objects.get_or_create(
+        minute='*/4', hour='*', day_of_week='*', day_of_month='*', month_of_year='*'
+    )
+
+    # Create or update the periodic task
+    task, created = PeriodicTask.objects.update_or_create(
+        name="price_drop_notification_task",
+        defaults={
+            'crontab': schedule,
+            'task': 'scraper.tasks.notify_price_drop',  # Ensure the path is correct
+            'args': json.dumps([]),  # No arguments needed
+            'enabled': True,
+        }
+    )
+
+    if created:
+        logger.info("Scheduled price drop email task every 4 minutes.")
+    else:
+        logger.info("Updated existing price drop email task.")
+
+    return JsonResponse({"message": "Task scheduled successfully!", "created": created})
+
+def schedule_bestsellers(request):
+    # Create a crontab schedule (for every 10 minutes)
+    schedule, created = CrontabSchedule.objects.get_or_create(
+        minute='*/4', hour='*', day_of_week='*', day_of_month='*', month_of_year='*'
+    )
+
+    # Create a periodic task
+    task, created = PeriodicTask.objects.update_or_create(
+        name="bestsellers_task",
+        defaults={
+            'crontab': schedule,
+            'task': 'scraper.tasks.bestsellers_task',  # Ensure correct task path
+            'args': json.dumps([]),  # Arguments if needed
+        }
+    )
+
+    if created:
+        print("Scheduled periodic task successfully!")
+    else:
+        print("Updated existing task.")
+    return JsonResponse({"message": "Task scheduled successfully!", "created": created})
+
+
+def schedule_today_offers(request):
+    # Create a crontab schedule (for every 10 minutes)
+    schedule, created = CrontabSchedule.objects.get_or_create(
+        minute='*/4', hour='*', day_of_week='*', day_of_month='*', month_of_year='*'
+    )
+
+    # Create a periodic task
+    task, created = PeriodicTask.objects.update_or_create(
+        name="today_offers_task",
+        defaults={
+            'crontab': schedule,
+            'task': 'scraper.tasks.today_offers_task',  # Ensure correct task path
+            'args': json.dumps([]),  # Arguments if needed
+        }
+    )
+
+    if created:
+        print("Scheduled periodic task successfully!")
+    else:
+        print("Updated existing task.")
+    return JsonResponse({"message": "Task scheduled successfully!", "created": created})

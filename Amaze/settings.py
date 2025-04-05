@@ -27,6 +27,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'scraper',  # scraper app
+    'django_celery_results',
+    'django_celery_beat',
+    
 ]
 
 MIDDLEWARE = [
@@ -37,6 +40,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
 ]
 
 
@@ -70,6 +74,7 @@ DATABASES = {
         'HOST': os.getenv('DB_HOST'),
         'PORT': os.getenv('DB_PORT'),
         'OPTIONS': {'sslmode': 'require'}, # Ensure secure connection
+        'CONN_MAX_AGE': 300 
     }
 }
 
@@ -102,4 +107,40 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY","anon-key")
 
 # Site URL (For Google OAuth redirect)
 SITE_URL = os.getenv("SITE_URL", "http://localhost:8000")
+
+# 
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+AUTH_USER_MODEL = 'scraper.CustomUser'  # Replace `CustomUser` with your actual model name
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+# Celery Settings
+CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
+CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
+
+# Celery Task Settings
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_TIMEZONE  = "Asia/Kolkata"
+
+# Celery Beat Scheduler
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# SMTP Settings
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_USE_TLS = True
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_HOST_USER ='sudhanshun10b3720@gmail.com'
+EMAIL_HOST_PASSWORD = "hewv jnuw ldeu jesa"
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
+ASGI_APPLICATION = "Amaze.asgi.application"
 

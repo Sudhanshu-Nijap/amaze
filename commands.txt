@@ -1,0 +1,4 @@
+python manage.py runserver  
+redis-server   
+celery -A Amaze.celery worker --pool=solo -l info
+celery -A Amaze beat  -l info

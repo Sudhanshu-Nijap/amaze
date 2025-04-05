@@ -53,8 +53,8 @@
                 </p>
                 
                 
-                <p class="fw-bold {% if product.in_stock %}text-success{% else %}text-danger{% endif %}">
-                    {% if product.in_stock %} In Stock {% else %} Out of Stock {% endif %}
+                <p class="fw-bold {% if product.stock_status %}text-success{% else %}text-danger{% endif %}">
+                    {% if product.stock_status %} In Stock {% else %} Out of Stock {% endif %}
                 </p>
 
                 <a href="{{ product.url }}" target="_blank" class="btn btn-warning fw-bold w-100 rounded-pill">View at Amazon</a>
@@ -81,7 +81,7 @@
                     data-imageUrl="{{ product.image_url }}"
                     data-url="{{ product.url }}"
                     data-rating="{{ product.rating }}"
-                    data-stock-status="{% if product.in_stock %}In Stock{% else %}Out of Stock{% endif %}"
+                    data-stock-status="{{product.stock_status}}"
                     class="btn btn-primary">
                     +Add Price Watch
                 </button>

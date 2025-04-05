@@ -15,3 +15,36 @@ def get_or_create_user_instance(user_data):
         }
     )
     return user
+
+
+# from django.core.mail import send_mail
+# from django.conf import settings
+# from django.db import connection
+
+# def notify_price_drop():
+#     with connection.cursor() as cursor:
+#         # Get product details and user emails where the price has dropped
+#         cursor.execute("""
+#             SELECT u.email, p.title, p.current_price, t.target_price
+#             FROM scraper_trackedproduct t
+#             JOIN scraper_product p ON t.product_id = p.id
+#             JOIN scraper_customuser u ON t.user_id = u.id
+#             WHERE p.current_price <= t.target_price;
+#         """)
+#         rows = cursor.fetchall()
+
+#         for email, title, current_price, target_price in rows:
+#             subject = f"Price Drop Alert: {title}"
+#             message = f"The price for '{title}' has dropped to {current_price} (target was {target_price})."
+#             from_email = settings.DEFAULT_FROM_EMAIL
+#             recipient_list = [email]
+
+#             # Print email details for debugging
+#             print(f"Sending email to: {email}")
+#             print(f"Subject: {subject}")
+#             print(f"Message: {message}")
+
+#             # Send email
+#             send_mail(subject, message, from_email, recipient_list)
+#             print(f"Notification sent to {email}")
+

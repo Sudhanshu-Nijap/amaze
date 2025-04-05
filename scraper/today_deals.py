@@ -1,52 +1,3 @@
-# import requests
-# from bs4 import BeautifulSoup
-
-# # ScraperAPI Key (Replace with your actual key)
-# SCRAPERAPI_KEY = "67cda07a9b699640ce78da5d0b275e99"
-
-# def get_scraperapi_url(url):
-#     """Returns the ScraperAPI proxy URL."""
-#     return f"http://api.scraperapi.com?api_key={SCRAPERAPI_KEY}&url={url}&render=true"
-
-# def scrape_amazon_today_offers(start=0, count=8):
-#     """Scrapes Amazon Today's Deals and returns a limited number of products."""
-
-#     url = "https://www.amazon.in/s?k=today+offer"
-#     scraperapi_url = get_scraperapi_url(url)
-
-#     response = requests.get(scraperapi_url)
-
-#     if response.status_code == 200:
-#         soup = BeautifulSoup(response.text, "html.parser")
-
-#         # ✅ Find product containers
-#         products = soup.find_all("div", {"data-component-type": "s-search-result"})
-
-#         extracted_products = []
-#         for product in products:
-#             title_tag = product.find("h2").find("span") if product.find("h2") else None
-#             title = title_tag.text.strip() if title_tag else "No title found"
-
-#             price_tag = product.find("span", class_="a-price-whole")
-#             price = price_tag.get_text(strip=True) if price_tag else "Price not available"
-
-#             img_tag = product.find("img", class_="s-image")
-#             img_url = img_tag["src"] if img_tag else None
-
-#             link_tag = product.find("a", class_="a-link-normal")
-#             product_url = "https://www.amazon.in" + link_tag["href"] if link_tag else None
-
-#             if img_url and product_url and title:
-#                 extracted_products.append({"title": title, "price": price, "image": img_url, "url": product_url})
-
-#         # ✅ Return a limited number of products
-#         return extracted_products[start : start + count]  
-        
-#     return []  # Return empty list if scraping fails
-
-
-
-
 import re
 import requests
 from bs4 import BeautifulSoup
@@ -54,7 +5,7 @@ from decimal import Decimal
 from urllib.parse import urlparse, urlunparse
 from .models import TodayDeals  # Import TodayDeals model
 
-SCRAPERAPI_KEY = "67cda07a9b699640ce78da5d0b275e99"
+SCRAPERAPI_KEY = "16830b77d12c2f914cba166d5291c960"
 
 def get_scraperapi_url(url):
     """Returns the ScraperAPI proxy URL."""
