@@ -1,20 +1,35 @@
 #!/bin/bash
-# Set default port
-export PORT=${PORT:-8000}
-echo "Starting Everything... Target Port: $PORT"
 
-# Run migrations
-echo "Running migrations..."
-python manage.py migrate --noinput || { echo "Migration failed!"; exit 1; }
+# Configuration
+PORT="${PORT:-8000}"
+echo "------------------------------------------------"
+echo "🚀 Startup Profile: Production"
+echo "🌐 Port: $PORT"
+echo "------------------------------------------------"
 
-# Start Celery Worker in the background
-echo "Starting Celery Worker..."
+# Run migrations in the background but wait for them briefly
+echo "🔨 Running Migrations..."
+python manage.py migrate --noinput &
+MIGRATION_PID=$!
+
+# Start Celery Worker & Beat in the background
+echo "👷 Starting Background Tasks (Worker & Beat)..."
 celery -A Amaze worker --loglevel=info --pool=solo &
-
-# Start Celery Beat in the background
-echo "Starting Celery Beat..."
 celery -A Amaze beat --loglevel=info &
 
-# Start Gunicorn (Web Server) in the foreground
-echo "Starting Gunicorn on port $PORT..."
-exec gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 Amaze.wsgi:application
+# Wait for migrations to finish for up to 15 seconds
+wait $MIGRATION_PID
+echo "✅ Migrations complete or moved to background."
+
+# Start Gunicorn
+echo "🔥 Starting Web Server (Gunicorn)..."
+# We bind specifically to 0.0.0.0:$PORT
+# Reduced workers to save RAM (Railway single service limits)
+exec gunicorn Amaze.wsgi:application \
+    --bind "0.0.0.0:$PORT" \
+    --workers 2 \
+    --threads 2 \
+    --timeout 120 \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info
