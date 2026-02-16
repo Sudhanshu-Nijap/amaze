@@ -136,11 +136,14 @@ EMAIL_USE_TLS = True
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_HOST_USER ='sudhanshun10b3720@gmail.com'
-EMAIL_HOST_PASSWORD = "hewv jnuw ldeu jesa"
+EMAIL_HOST_PASSWORD = "eniyaihhuizttotg"
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
 ASGI_APPLICATION = "Amaze.asgi.application"
+
+# ScraperAPI Key
+SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY")
 

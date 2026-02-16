@@ -1,61 +1,26 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.conf import settings
-from supabase import create_client
+from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth.decorators import login_required
+from django.db.models import Count
+from django.views.decorators.csrf import csrf_exempt
+from decimal import Decimal, InvalidOperation
 import re
-from django.db import models
+import json
+import logging
 
-from scraper.models import CustomUser  # Import your CustomUser model
-
-
+from scraper.models import CustomUser, Bestseller, TodayDeals, Product, TrackedProduct, PriceHistory
 from .bestseller import scrape_amazon_bestsellers
 from .scraper import amazon_scraper
 from .today_deals import scrape_amazon_today_offers
+from django_celery_beat.models import PeriodicTask, CrontabSchedule
 
-# Initialize Supabase Client
-supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-
-def get_current_user(request):
-    """Fetch logged-in user from Supabase and ensure they exist in the Django DB."""
-    token = request.COOKIES.get("supabase_token")  # Get token from cookie
-    if not token:
-        return None  
-
-    try:
-        user_response = supabase.auth.get_user(token)  # Fetch user from Supabase
-        if user_response and user_response.user:
-            user_data = user_response.user
-            email = user_data.email
-            first_name = user_data.user_metadata.get("first_name", "")
-            last_name = user_data.user_metadata.get("last_name", "")
-            avatar = user_data.user_metadata.get("avatar_url", "")
-
-            # Ensure user exists in the Django database
-            user, created = CustomUser.objects.get_or_create(
-                email=email,
-                defaults={"first_name": first_name, "last_name": last_name}
-            )
-
-            return {
-                "email": user.email,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "avatar": avatar
-            }
-
-    except Exception as e:
-        print("Error fetching user:", e)
-    
-    return None
-
-
-from django.shortcuts import render
-from .models import Bestseller
-# from .utils import get_current_user, scrape_amazon_today_offers  # Assuming utils contains these functions
+logger = logging.getLogger(__name__)
 
 def home(request):
     """Render homepage with user details, bestsellers from DB, and today's deals."""
-    user = get_current_user(request)  # Fetch user from Supabase
+    user = request.user if request.user.is_authenticated else None
 
     # Fetch bestsellers from the database (latest 8)
     bestsellers = Bestseller.objects.order_by("-id")[:8]
@@ -72,132 +37,144 @@ def home(request):
 
 
 def register_view(request):
-    """Handles User Registration with Supabase and stores in Django DB."""
+    """Handles User Registration via Supabase Auth."""
     if request.method == "POST":
         email = request.POST.get("email")
         password = request.POST.get("password")
         first_name = request.POST.get("first_name")
         last_name = request.POST.get("last_name")
 
+        # 1. Attempt to Sign Up in Supabase
+        from .supabase_client import supabase
         try:
-            response = supabase.auth.sign_up({
+            supabase_response = supabase.auth.sign_up({
                 "email": email,
                 "password": password,
                 "options": {
-                    "data": {  # Store First & Last Name in Metadata
+                    "data": {
                         "first_name": first_name,
                         "last_name": last_name
                     }
                 }
             })
-
-            if response and response.user:
-                # Also store the user in Django database
-                CustomUser.objects.get_or_create(
-                    email=email,
-                    defaults={"first_name": first_name, "last_name": last_name}
-                )
-                
-                return redirect("login_view")  # Redirect to login after signup
-            else:
-                return render(request, "register.html", {"error": "Registration failed. Try again."})
+            
+            # Check if user already exists in Supabase
+            if not supabase_response.user and not supabase_response.session:
+                 pass 
 
         except Exception as e:
-            return render(request, "register.html", {"error": str(e)})
+            # Supabase failed (e.g. user already exists, weak password, connection error)
+            print(f"Supabase Registration Exception: {e}")
+            error_msg = str(e)
+            if "For security purposes, you can only request this after" in error_msg:
+                error_msg = "Please wait a few seconds before trying again."
+            elif "email rate limit exceeded" in error_msg.lower():
+                error_msg = "Too many registration attempts. Please wait a while before trying again."
+            return render(request, "register.html", {"error": f"Registration failed: {error_msg}"})
+
+        # 2. Checks if local user exists, if not create one.
+        if CustomUser.objects.filter(email=email).exists():
+             return render(request, "register.html", {"error": "Email already registered."})
+
+        try:
+            # Create local user WITHOUT password
+            user = CustomUser.objects.create_user(
+                email=email,
+                password=None, # No password stored locally
+                first_name=first_name,
+                last_name=last_name
+            )
+            user.set_unusable_password()
+            user.save()
+            
+            # Log the user in locally using Django's backend
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            
+            return redirect("home")
+
+        except Exception as e:
+            return render(request, "register.html", {"error": f"Local Error: {str(e)}"})
 
     return render(request, "register.html")
 
 
 def login_view(request):
-    """Handles User Login with Supabase"""
+    """Handles User Login with Supabase Auth"""
     if request.method == "POST":
         email = request.POST.get("email")
         password = request.POST.get("password")
 
+        # 1. Authenticate with Supabase
+        from .supabase_client import supabase
         try:
-            response = supabase.auth.sign_in_with_password({"email": email, "password": password})  
+            print(f"Attempting Supabase login for {email}")
+            response = supabase.auth.sign_in_with_password({
+                "email": email,
+                "password": password
+            })
+            
+            # If successful, we get a user and session
+            supabase_user = response.user
+            print(f"Supabase login successful. User ID: {supabase_user.id if supabase_user else 'None'}")
+            
+            if supabase_user:
+                # 2. Get or Create Local User (to maintain FKs)
+                try:
+                    user = CustomUser.objects.get(email=email)
+                except CustomUser.DoesNotExist:
+                     print("Creating local shadow user")
+                     user = CustomUser.objects.create_user(
+                        email=email,
+                        password=None,
+                        first_name=supabase_user.user_metadata.get('first_name', ''),
+                        last_name=supabase_user.user_metadata.get('last_name', '')
+                     )
+                     user.set_unusable_password()
+                     user.save()
 
-            if response and response.session:
-                token = response.session.access_token  # Get token
-                print(token)
+                # 3. Create Django Session manually
+                print("Logging in via Django backend")
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
                 
-                # Store token in HTTP-only cookie
-                # response_obj = redirect("home")  # Redirect after login 
-                response_obj = redirect("tracked_products")
-                response_obj.set_cookie("supabase_token", token, httponly=True)
-                return response_obj
-
-            else:
-                return render(request, "login.html", {"error": "Invalid credentials"})
-
+                # Check for next parameter
+                next_url = request.GET.get('next')
+                if next_url:
+                    return redirect(next_url)
+                return redirect("tracked_products")
+                
         except Exception as e:
-            return render(request, "login.html", {"error": str(e)})
+            print(f"Login Exception: {e}")
+            return render(request, "login.html", {"error": f"Login Failed: {str(e)}"})
 
     return render(request, "login.html")
 
 
 def google_login(request):
-    """Redirects user to Supabase Google OAuth login"""
-    google_auth_url = f"{settings.SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={settings.SITE_URL}/callback"
-    return redirect(google_auth_url)
+    """Google Login is currently disabled."""
+    return redirect("login_view")
+
 
 def google_callback(request):
-    """Handles Google OAuth callback and stores user session in DB."""
-    access_token = request.GET.get("access_token")
-
-    if not access_token:
-        return redirect("login_view")  # If no token, go back to login
-
-    try:
-        # Fetch user details using Supabase API
-        user_response = supabase.auth.get_user(access_token)
-
-        if user_response and user_response.user:
-            user_data = user_response.user
-            email = user_data.email
-            first_name = user_data.user_metadata.get("first_name", "")
-            last_name = user_data.user_metadata.get("last_name", "")
-            avatar = user_data.user_metadata.get("avatar_url", "")
-
-            # Store user in Django DB if not exists
-            CustomUser.objects.get_or_create(
-                email=email,
-                defaults={"first_name": first_name, "last_name": last_name}
-            )
-
-            # Store token in HTTP-only cookie
-            response_obj = redirect("home")
-            response_obj.set_cookie("supabase_token", access_token, httponly=True)
-
-            return response_obj
-
-    except Exception as e:
-        print("Google Login Error:", e)
-        return redirect("login_view")
-
+    """Google Login is currently disabled."""
     return redirect("login_view")
 
 
 def logout_view(request):
-    """Logs out user by clearing the Supabase token cookie"""
-    response = redirect("home")
-    response.delete_cookie("supabase_token")  # Remove token from cookies
-    return response
+    """Logs out user from Django and Supabase"""
+    try:
+        from .supabase_client import supabase
+        supabase.auth.sign_out()
+    except Exception as e:
+        print(f"Supabase Logout Error: {e}")
+        
+    logout(request)
+    return redirect("home")
 
 
-def login_required_supabase(view_func):
-    """Decorator to protect views for logged-in users via Supabase."""
-    def wrapper(request, *args, **kwargs):
-        if not get_current_user(request):
-            return redirect("login_view")
-        return view_func(request, *args, **kwargs)
-    return wrapper
-
-
-@login_required_supabase
+@login_required(login_url="login_view")
 def amazon_product_view(request):
     """Only logged-in users can track products"""
-    user = get_current_user(request)
+    user = request.user
     if request.method == "POST":
         user_input = request.POST.get("url")
 
@@ -215,15 +192,10 @@ def amazon_product_view(request):
 
     return render(request, "result.html", {"error_message": "Invalid request","user": user})
 
-from django.shortcuts import render
-from django.http import JsonResponse
-from .models import Bestseller
-
-from django.db.models import Count
 
 def bestsellers_view(request):
     """View to display Amazon Bestsellers from the database. If empty, scrape first."""
-    user = get_current_user(request)
+    user = request.user if request.user.is_authenticated else None
     start = int(request.GET.get("start", 0))  # Start index
     count = 20  # Number of products per page
 
@@ -264,17 +236,9 @@ def bestsellers_view(request):
     })
 
 
-
-from django.shortcuts import render
-from django.http import JsonResponse
-from django.db.models import Count
-from .models import TodayDeals
-# from .scraper import scrape_amazon_today_offers
-# from .auth_utils import get_current_user  # Assuming you have this function for authentication
-
 def today_view(request):
     """View to display Amazon Today's Deals from the database. If empty, scrape first."""
-    user = get_current_user(request)
+    user = request.user if request.user.is_authenticated else None
     start = int(request.GET.get("start", 0))  # Start index
     count = 20  # Number of products per page
 
@@ -314,14 +278,10 @@ def today_view(request):
         "count": count,
     })
 
-
-from django.shortcuts import render
-import json
-
-@login_required_supabase
+@login_required(login_url="login_view")
 def result(request):
     """Fetch product details from DB if available; otherwise, scrape them."""
-    user = get_current_user(request)
+    user = request.user
     url = request.GET.get("url")
 
     if not url:
@@ -369,44 +329,31 @@ def result(request):
         return render(request, "result.html", {"error_message": f"An error occurred: {e}", "user": user})
 
 
-from django.core.exceptions import ObjectDoesNotExist
-from .models import TrackedProduct, CustomUser
-
-@login_required_supabase
+@login_required(login_url="login_view")
 def tracked_products_view(request):
     """Display products tracked by the logged-in user."""
-    user = get_current_user(request)  # Get user details from Supabase
-
-    if not user or 'email' not in user:
-        # Handle missing or invalid user data
-        return render(request, "tracked_products.html", {"error_message": "User not found. Please log in again.","user": user})
-
-    try:
-        # Fetch the actual CustomUser instance using the email
-        django_user = CustomUser.objects.get(email=user['email'])
-    except ObjectDoesNotExist:
-        return render(request, "tracked_products.html", {"error_message": "User not found. Please log in again."})
+    user = request.user
 
     # Fetch tracked products with related product details
-    tracked_products = TrackedProduct.objects.filter(user=django_user).select_related("product")
+    tracked_products = TrackedProduct.objects.filter(user=user).select_related("product")
 
     return render(request, "tracked_products.html", {
         "user": user,  # Pass the user object directly to the template
         "tracked_products": tracked_products
     })
 
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import json
-from .models import Product, TrackedProduct, PriceHistory
-from decimal import Decimal, InvalidOperation
-from .utils import get_or_create_user_instance  # Import the new function
-
 
 @csrf_exempt
 def track_products_db(request):
+    """API to track a product for a user."""
     if request.method == "POST":
         try:
+            # Check authentication
+            if not request.user.is_authenticated:
+                 return JsonResponse({"error": "User not authenticated."}, status=401)
+            
+            user = request.user
+
             data = json.loads(request.body)
             asin = data.get("asin")
             desired_price = data.get("desired_price")
@@ -414,15 +361,6 @@ def track_products_db(request):
 
             if not asin:
                 return JsonResponse({"error": "ASIN is required."}, status=400)
-
-            # Get the authenticated user
-            user_data = get_current_user(request)
-            if not user_data:
-                return JsonResponse({"error": "User not authenticated."}, status=401)
-
-            user = get_or_create_user_instance(user_data)
-            if not user:
-                return JsonResponse({"error": "User instance not found."}, status=404)
 
             # Convert price to Decimal
             try:
@@ -478,12 +416,6 @@ def track_products_db(request):
     return JsonResponse({"error": "Invalid request method."}, status=405)
 
 
-from django.shortcuts import get_object_or_404
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from .models import TrackedProduct
-from .utils import  get_or_create_user_instance
-
 @csrf_exempt
 def remove_product_db(request, asin):
     """Removes a product from the user's tracked products."""
@@ -491,14 +423,10 @@ def remove_product_db(request, asin):
         return JsonResponse({"error": "Invalid request method. Only DELETE is allowed."}, status=405)
 
     # Authenticate User
-    user_data = get_current_user(request)
-    if not user_data:
+    if not request.user.is_authenticated:
         return JsonResponse({"error": "User not authenticated."}, status=401)
-
-    # Fetch user instance
-    user = get_or_create_user_instance(user_data)
-    if not user:
-        return JsonResponse({"error": "User instance not found."}, status=404)
+    
+    user = request.user
 
     # Delete TrackedProduct
     try:
@@ -511,14 +439,6 @@ def remove_product_db(request, asin):
     except Exception as e:
         return JsonResponse({"error": f"❌ Failed to delete product. {str(e)}"}, status=500)
 
-
-
-import json
-import logging
-from django_celery_beat.models import PeriodicTask, CrontabSchedule
-from django.http import JsonResponse
-
-logger = logging.getLogger(__name__)
 
 def schedule_mail(request):
     """Schedule `notify_price_drop` task to run every 4 minutes."""
@@ -547,7 +467,8 @@ def schedule_mail(request):
     return JsonResponse({"message": "Task scheduled successfully!", "created": created})
 
 def schedule_bestsellers(request):
-    # Create a crontab schedule (for every 10 minutes)
+    """Schedule `bestsellers_task` to run every 4 minutes."""
+    # Create a crontab schedule (for every 4 minutes)
     schedule, created = CrontabSchedule.objects.get_or_create(
         minute='*/4', hour='*', day_of_week='*', day_of_month='*', month_of_year='*'
     )
@@ -570,7 +491,8 @@ def schedule_bestsellers(request):
 
 
 def schedule_today_offers(request):
-    # Create a crontab schedule (for every 10 minutes)
+    """Schedule `today_offers_task` to run every 4 minutes."""
+    # Create a crontab schedule (for every 4 minutes)
     schedule, created = CrontabSchedule.objects.get_or_create(
         minute='*/4', hour='*', day_of_week='*', day_of_month='*', month_of_year='*'
     )
@@ -590,3 +512,7 @@ def schedule_today_offers(request):
     else:
         print("Updated existing task.")
     return JsonResponse({"message": "Task scheduled successfully!", "created": created})
+
+
+
+

@@ -16,8 +16,8 @@ class CustomUserManager(BaseUserManager):
         email = self.normalize_email(email)
         user = self.model(email=email, first_name=first_name, last_name=last_name, **extra_fields)
         
-        # We don't store passwords since Supabase handles authentication
-        user.set_unusable_password()
+        # Store the password securely in Django DB
+        user.set_password(password)
         user.save(using=self._db)
         return user
 
@@ -40,7 +40,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30, blank=True, null=True)
-    password = models.CharField(max_length=128, blank=True, null=True)  # Fix here
+    # password field is provided by AbstractBaseUser
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
@@ -57,21 +57,28 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
 #  PRODUCT MODEL
 class Product(models.Model):
+    """
+    Represents a product scraped from Amazon.
+    Stores static details like title, image, and Amazon URL.
+    """
     asin = models.CharField(max_length=10, unique=True)
-    title = models.CharField(max_length=500)  # Increased length for title
+    title = models.CharField(max_length=500)
     image_url = models.URLField()
     current_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
     rating = models.CharField(max_length=20, default="0 out of 5 stars")
     stock_status = models.CharField(max_length=255, blank=True, null=True)
-    amazon_url = models.URLField(max_length=1000)  # Increased length for amazon_url
-
-
+    amazon_url = models.URLField(max_length=1000)
+    last_scraped = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.title
 
 # TRACKED PRODUCT MODEL
 class TrackedProduct(models.Model):
+    """
+    Links a user to a product they are tracking.
+    Stores the target price for notifications.
+    """
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     added_at = models.DateTimeField(auto_now_add=True)
@@ -89,7 +96,11 @@ from .models import Product, CustomUser
 
 
 class PriceHistory(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)  # Keep if tracking per user
+    """
+    Stores historical price data for a product.
+    Used for price tracking graphs and analysis.
+    """
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="price_history")
     price = models.DecimalField(max_digits=10, decimal_places=2)
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -107,10 +118,14 @@ class PriceHistory(models.Model):
 
 
 class Bestseller(models.Model):
-    title = models.CharField(max_length=500)  # Increase from 200 to 500
+    """
+    Stores top-selling products scraped from Amazon Best Sellers list.
+    Updated periodically via Celery task.
+    """
+    title = models.CharField(max_length=500)
     current_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     image_url = models.URLField()
-    product_url = models.URLField(unique=True, max_length=1000)  # Increase from 200 to 1000
+    product_url = models.URLField(unique=True, max_length=1000)
     scraped_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -118,10 +133,14 @@ class Bestseller(models.Model):
 
 
 class TodayDeals(models.Model):
-    title = models.CharField(max_length=500)  # Increase from 200 to 500
+    """
+    Stores daily deals scraped from Amazon Today's Deals.
+    Updated periodically via Celery task.
+    """
+    title = models.CharField(max_length=500)
     current_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     image_url = models.URLField()
-    product_url = models.URLField(unique=True, max_length=1000)  # Increase from 200 to 1000
+    product_url = models.URLField(unique=True, max_length=1000)
     scraped_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

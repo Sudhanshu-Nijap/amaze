@@ -9,6 +9,10 @@ logger = logging.getLogger(__name__)
 
 @shared_task  # Removed bind=True (not needed)
 def notify_price_drop():
+    """
+    Celery task to check for price drops and send email notifications.
+    Queries the database for products where current_price <= target_price.
+    """
     logger.info("Starting notify_price_drop task...")
 
     with connection.cursor() as cursor:
@@ -54,5 +58,5 @@ def bestsellers_task():
 
 @shared_task
 def today_offers_task():
-    """Celery task to scrape Amazon Bestsellers."""
+    """Celery task to scrape Amazon Today's Deals."""
     return scrape_amazon_today_offers()
