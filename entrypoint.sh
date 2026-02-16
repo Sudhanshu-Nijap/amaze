@@ -1,35 +1,27 @@
 #!/bin/bash
 
-# Configuration
+# Railway Port Configuration
 PORT="${PORT:-8000}"
-echo "------------------------------------------------"
-echo "🚀 Startup Profile: Production"
-echo "🌐 Port: $PORT"
-echo "------------------------------------------------"
+echo "🚀 Target Port: $PORT"
 
-# Run migrations in the background but wait for them briefly
-echo "🔨 Running Migrations..."
+# 1. Run migrations in the background (prevents blocking web server)
+echo "🔨 Applying migrations..."
 python manage.py migrate --noinput &
-MIGRATION_PID=$!
 
-# Start Celery Worker & Beat in the background
-echo "👷 Starting Background Tasks (Worker & Beat)..."
-celery -A Amaze worker --loglevel=info --pool=solo &
+# 2. Start Celery Worker & Beat (Low priority to save RAM for Web)
+echo "👷 Starting Workers..."
+# Use --concurrency 1 to save memory
+celery -A Amaze worker --loglevel=info --pool=solo --concurrency=1 &
 celery -A Amaze beat --loglevel=info &
 
-# Wait for migrations to finish for up to 15 seconds
-wait $MIGRATION_PID
-echo "✅ Migrations complete or moved to background."
-
-# Start Gunicorn
-echo "🔥 Starting Web Server (Gunicorn)..."
-# We bind specifically to 0.0.0.0:$PORT
-# Reduced workers to save RAM (Railway single service limits)
+# 3. Start Gunicorn (The most important process)
+echo "🔥 Starting Gunicorn on 0.0.0.0:$PORT"
+# Using 1 worker to stay under 512MB RAM (Chrome is heavy)
 exec gunicorn Amaze.wsgi:application \
     --bind "0.0.0.0:$PORT" \
-    --workers 2 \
-    --threads 2 \
+    --workers 1 \
+    --threads 4 \
     --timeout 120 \
+    --log-level debug \
     --access-logfile - \
-    --error-logfile - \
-    --log-level info
+    --error-logfile -
