@@ -2,7 +2,7 @@
 
 # Run migrations
 echo "Running migrations..."
-python manage.py migrate --noinput
+python manage.py migrate --noinput || { echo "Migration failed!"; exit 1; }
 
 # Start Celery Worker in the background
 echo "Starting Celery Worker..."
@@ -14,5 +14,5 @@ celery -A Amaze beat --loglevel=info &
 
 # Start Gunicorn (Web Server) in the foreground
 echo "Starting Gunicorn on port ${PORT:-8000}..."
-echo "Web URL should be accessible soon."
-exec gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120 Amaze.wsgi:application
+echo "Web URL: https://amaze-production.up.railway.app"
+exec gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2 --threads 4 --timeout 120 --log-level debug Amaze.wsgi:application

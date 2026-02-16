@@ -17,6 +17,13 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = ["*"]
 
+# Railway/Production SSL configuration
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_TRUSTED_ORIGINS = [
+    "https://amaze-production.up.railway.app",
+    "https://*.up.railway.app"
+]
+
 
 # Application definition
 INSTALLED_APPS = [
@@ -142,7 +149,7 @@ EMAIL_HOST_PASSWORD = "eniyaihhuizttotg"
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 ASGI_APPLICATION = "Amaze.asgi.application"
 
