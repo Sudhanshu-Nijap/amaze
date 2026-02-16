@@ -15,6 +15,10 @@ from .bestseller import scrape_amazon_bestsellers
 from .scraper import amazon_scraper
 from .today_deals import scrape_amazon_today_offers
 from django_celery_beat.models import PeriodicTask, CrontabSchedule
+from django.http import HttpResponse
+
+def ping(request):
+    return HttpResponse("pong")
 
 logger = logging.getLogger(__name__)
 

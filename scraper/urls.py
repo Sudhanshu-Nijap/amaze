@@ -1,9 +1,10 @@
 from django.urls import path
-from .views import register_view, login_view, logout_view, google_login, google_callback, home, amazon_product_view, bestsellers_view, result, today_view, tracked_products_view, track_products_db,remove_product_db,schedule_mail,schedule_bestsellers,schedule_today_offers
+from .views import register_view, login_view, logout_view, google_login, google_callback, home, amazon_product_view, bestsellers_view, result, today_view, tracked_products_view, track_products_db,remove_product_db,schedule_mail,schedule_bestsellers,schedule_today_offers, ping
 
 
 urlpatterns = [
     path("", home, name="home"),
+    path("ping/", ping, name="ping"),
     path('search/', amazon_product_view, name='search'),
     path("register/", register_view, name="register_view"),
     path("login/", login_view, name="login_view"),

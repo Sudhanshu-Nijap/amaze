@@ -1,18 +1,24 @@
 #!/bin/bash
 
+# Ensure we are in the right directory
+cd /app
+
 # Run migrations
 echo "Running migrations..."
 python manage.py migrate --noinput || { echo "Migration failed!"; exit 1; }
 
-# Start Celery Worker in the background
+# Start Celery Worker in the background (nohup prevents it from dying with the shell)
 echo "Starting Celery Worker..."
-celery -A Amaze worker --loglevel=info --pool=solo &
+nohup celery -A Amaze worker --loglevel=info --pool=solo > celery_worker.log 2>&1 &
 
 # Start Celery Beat in the background
 echo "Starting Celery Beat..."
-celery -A Amaze beat --loglevel=info &
+nohup celery -A Amaze beat --loglevel=info > celery_beat.log 2>&1 &
+
+# Brief sleep to let celery initialize
+sleep 2
 
 # Start Gunicorn (Web Server) in the foreground
-echo "Starting Gunicorn on port ${PORT:-8000}..."
-echo "Web URL: https://amaze-production.up.railway.app"
-exec gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2 --threads 4 --timeout 120 --log-level debug Amaze.wsgi:application
+# Binding to 0.0.0.0:$PORT is REQUIRED for Railway
+echo "Starting Gunicorn on port ${PORT}..."
+exec gunicorn --bind 0.0.0.0:${PORT} --workers 2 --threads 4 --timeout 120 --log-level debug Amaze.wsgi:application
