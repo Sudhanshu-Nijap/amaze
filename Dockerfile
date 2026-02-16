@@ -5,6 +5,7 @@ FROM python:3.10-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
+ENV C_FORCE_ROOT 1
 
 # Set work directory
 WORKDIR /app
@@ -29,11 +30,14 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy project
 COPY . /app/
 
+# Make entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
 # Expose port
 EXPOSE 8000
 
-# Run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "Amaze.wsgi:application"]
+# Use entrypoint script to run everything
+CMD ["/app/entrypoint.sh"]

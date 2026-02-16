@@ -2,3 +2,8 @@ python manage.py runserver
 redis-server   
 celery -A Amaze worker --loglevel=info --pool=solo
 celery -A Amaze beat --loglevel=info
+
+# PRODUCTION COMMANDS (For Railway/Render)
+# Web: python manage.py migrate && gunicorn --bind 0.0.0.0:8000 Amaze.wsgi:application
+# Worker: celery -A Amaze worker --loglevel=info --pool=solo
+# Beat: celery -A Amaze beat --loglevel=info

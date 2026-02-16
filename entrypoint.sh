@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Run migrations
+echo "Running migrations..."
+python manage.py migrate --noinput
+
+# Start Celery Worker in the background
+echo "Starting Celery Worker..."
+celery -A Amaze worker --loglevel=info --pool=solo &
+
+# Start Celery Beat in the background
+echo "Starting Celery Beat..."
+celery -A Amaze beat --loglevel=info &
+
+# Start Gunicorn (Web Server) in the foreground
+echo "Starting Gunicorn..."
+exec gunicorn --bind 0.0.0.0:8000 Amaze.wsgi:application
