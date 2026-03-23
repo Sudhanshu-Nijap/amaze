@@ -2,12 +2,6 @@
 
 **Amaze** — Amazon Price Tracker
 
-## ⚠️ Current Status
-
-The Supabase project used in this app is permanently paused, so the app **won’t work right now**.  
-You can still see how it works in this demo video:  
-[YouTube Demo](https://www.youtube.com/watch?v=3HoA9vVWzyo&t=4s)
-
 ## 📄 Description  
 
 Amaze is a web application that lets users track Amazon product prices and stock availability over time.  
